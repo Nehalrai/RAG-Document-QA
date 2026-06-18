@@ -1,0 +1,37 @@
+services:
+
+  qdrant:
+    image: qdrant/qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      # Persist Qdrant data on disk so ingested documents survive container restarts
+      - qdrant_data:/qdrant/storage
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - QDRANT_HOST=qdrant          # 'qdrant' is the service name above — Docker resolves it
+      - QDRANT_PORT=6333
+      - OLLAMA_URL=http://host.docker.internal:11434  # points to Ollama running on your host machine
+      - OLLAMA_MODEL=mistral
+    depends_on:
+      - qdrant                      # wait for Qdrant to start before launching backend
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://backend:8000  # 'backend' is the service name above
+    depends_on:
+      - backend
+
+volumes:
+  qdrant_data:
